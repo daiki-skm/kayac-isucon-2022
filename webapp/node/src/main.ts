@@ -1,7 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import partials from "express-partials";
 import session from "express-session";
-// TODO
 import bcrypt from "bcrypt";
 import util from "util";
 import { ulid } from "ulid";
@@ -233,7 +232,6 @@ app.post("/api/signup", async (req: Request, res: Response) => {
 
   // password hashを作る
   const passwordHash = generatePasswordHash(password);
-
   // default value
   const is_ban = false;
   const signupTimestamp = new Date();
@@ -241,8 +239,7 @@ app.post("/api/signup", async (req: Request, res: Response) => {
   const db = await pool.getConnection();
   try {
     const displayName = display_name ? display_name : user_account;
-    // TODO
-    await db.query(
+    db.query(
       "INSERT INTO user (`account`, `display_name`, `password_hash`, `is_ban`, `created_at`, `last_logined_at`) VALUES (?, ?, ?, ?, ?, ?)",
       [
         user_account,
@@ -310,9 +307,8 @@ app.post("/api/login", async (req: Request, res: Response) => {
       return error(req, res, 401, "failed to login (wrong password)");
     }
 
-    // TODO
     // 最終ログイン日時を更新
-    await db.query("UPDATE user SET last_logined_at = ? WHERE account = ?", [
+    db.query("UPDATE user SET last_logined_at = ? WHERE account = ?", [
       new Date(),
       user.account,
     ]);
@@ -373,9 +369,6 @@ app.get("/api/popular_playlists", async (req: Request, res: Response) => {
 
   const db = await pool.getConnection();
   try {
-    // TODO
-    // トランザクションを使わないとfav数の順番が狂うことがある
-    await db.beginTransaction();
     const playlists = await getPopularPlaylistSummaries(db, user_account);
 
     const body: GetRecentPlaylistsResponse = {
@@ -384,9 +377,7 @@ app.get("/api/popular_playlists", async (req: Request, res: Response) => {
       playlists: playlists,
     };
     res.status(body.status).json(body);
-    await db.commit();
   } catch (err) {
-    await db.rollback();
     console.log(err);
     error(req, res, 500, "internal server error");
   } finally {
@@ -493,8 +484,7 @@ app.post("/api/playlist/add", async (req: Request, res: Response) => {
 
   const db = await pool.getConnection();
   try {
-    // TODO
-    await db.query(
+    db.query(
       "INSERT INTO playlist (`ulid`, `name`, `user_account`, `is_public`, `created_at`, `updated_at`) VALUES (?, ?, ?, ?, ?, ?)",
       [
         playlist_ulid,
@@ -572,9 +562,6 @@ app.post(
 
       const updatedTimestamp = new Date();
 
-      // TODO
-      await db.beginTransaction();
-
       // name, is_publicの更新
       await db.query(
         "UPDATE playlist SET name = ?, is_public = ?, `updated_at` = ? WHERE `ulid` = ?",
@@ -589,7 +576,6 @@ app.post(
       for (const [index, songUlid] of song_ulids.entries()) {
         const song = await getSongByUlid(db, songUlid);
         if (!song) {
-          await db.rollback();
           return error(req, res, 400, `song not found. ulid: ${songUlid}`);
         }
 
@@ -600,8 +586,6 @@ app.post(
           songId: song.id,
         });
       }
-
-      await db.commit();
 
       const playlistDetails = await getPlaylistDetailByPlaylistUlid(
         db,
@@ -658,12 +642,11 @@ app.post(
         return error(req, res, 400, "do not delete other users playlist");
       }
 
-      // TODO
-      await db.query("DELETE FROM playlist WHERE `ulid` = ?", [playlist.ulid]);
-      await db.query("DELETE FROM playlist_song WHERE playlist_id = ?", [
+      db.query("DELETE FROM playlist WHERE `ulid` = ?", [playlist.ulid]);
+      db.query("DELETE FROM playlist_song WHERE playlist_id = ?", [
         playlist.id,
       ]);
-      await db.query("DELETE FROM playlist_favorite WHERE playlist_id = ?", [
+      db.query("DELETE FROM playlist_favorite WHERE playlist_id = ?", [
         playlist.id,
       ]);
 
@@ -718,16 +701,15 @@ app.post(
             req.session.user_account
           );
         if (!playlistFavorite) {
-          await insertPlaylistFavorite(db, {
+          insertPlaylistFavorite(db, {
             playlistId: playlist.id,
             favoriteUserAccount: req.session.user_account,
             createdAt: createdTimestamp,
           });
         }
       } else {
-        // TODO
         // delete
-        await db.query(
+        db.query(
           "DELETE FROM playlist_favorite WHERE `playlist_id` = ? AND `favorite_user_account` = ?",
           [playlist.id, req.session.user_account]
         );
@@ -837,5 +819,5 @@ app.post("/initialize", async (req: Request, res: Response) => {
 });
 
 const port = parseInt(process.env["SERVER_APP_PORT"] ?? "3000", 10);
-console.log("starting listen80 server on :" + port + " ...");
+console.log("starting listen80 xxxxx server on :" + port + " ...");
 app.listen(port);
